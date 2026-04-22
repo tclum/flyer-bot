@@ -6,6 +6,13 @@ export interface PostMessageParams {
   channel: string;
   text: string;
   blocks?: Block[];
+  threadTs?: string;
+}
+
+export interface PostEphemeralParams {
+  channel: string;
+  user: string;
+  text: string;
 }
 
 export class SlackClient {
@@ -22,6 +29,7 @@ export class SlackClient {
       channel: params.channel,
       text: params.text,
       ...(params.blocks ? { blocks: params.blocks } : {}),
+      ...(params.threadTs ? { thread_ts: params.threadTs } : {}),
     });
     if (!res.ok || !res.ts || !res.channel) {
       throw new Error(`slack postMessage failed: ${res.error ?? "unknown"}`);
@@ -40,6 +48,17 @@ export class SlackClient {
     });
     if (!res.ok) {
       throw new Error(`slack update failed: ${res.error ?? "unknown"}`);
+    }
+  }
+
+  async postEphemeral(params: PostEphemeralParams): Promise<void> {
+    const res = await this.web.chat.postEphemeral({
+      channel: params.channel,
+      user: params.user,
+      text: params.text,
+    });
+    if (!res.ok) {
+      throw new Error(`slack postEphemeral failed: ${res.error ?? "unknown"}`);
     }
   }
 }

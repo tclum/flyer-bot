@@ -28,6 +28,7 @@ const airtableFieldMappingSchema = z.object({
     deadline: z.string().min(1).optional(),
     supportingAttachments: z.string().min(1).optional(),
     slackMessageTs: z.string().min(1).optional(),
+    lastActiveMessageTs: z.string().min(1).optional(),
     // optional read-only Airtable fields (auto / formula / AI)
     createdAt: z.string().min(1).optional(),
     daysUntilDeadline: z.string().min(1).optional(),
@@ -63,6 +64,7 @@ export const orgConfigSchema = z.object({
   // IANA timezone used to derive weekday/month/day from eventDate so the
   // model never does calendar math. Defaults to Pacific/Honolulu for PACE.
   timezone: z.string().min(1).default("Pacific/Honolulu"),
+  maxRevisions: z.number().int().positive().default(5),
 });
 
 export type OrgConfig = z.infer<typeof orgConfigSchema>;

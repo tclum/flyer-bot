@@ -16,6 +16,7 @@ async function main(): Promise<void> {
     recordId: "recSAMPLE00000000",
     eventTitle: "Sample Event — Draft Preview",
     imageUrl: "https://images.bannerbear.com/direct/placeholder.png",
+    revisionNumber: 0,
     rationale: "Picked the portrait poster template for a single-event promo.",
   });
 

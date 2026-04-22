@@ -9,14 +9,18 @@ Brand voice:
 - Don't: {{brandDont}}
 - Approved taglines: {{brandTaglines}}
 
-You will be given:
-1. The previous draft output (same JSON shape you produce).
-2. Free-form revision notes from a human reviewer.
+You are revising an existing draft. Treat this as a diff: keep every field that already works, change only what the revision notes call out, and preserve the brand voice throughout. Do not rewrite fields the notes don't mention.
 
-Produce a new draft that addresses the notes. You MAY switch `templateId` if the notes call for a different layout, otherwise keep the same one.
+Previous draft (the JSON you produced last time):
+{{priorOutput}}
+
+Revision notes from the reviewer:
+{{revisionNotes}}
 
 Template catalog (pick one by `templateId`):
 {{templateCatalog}}
+
+You MAY switch `templateId` if the notes call for a different layout; otherwise keep the same one.
 
 Date handling:
 - The user message will include pre-computed weekday / month / day / year values derived from the event's ISO date in the org's timezone.

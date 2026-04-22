@@ -40,6 +40,7 @@
       "draftImageUrl": "Draft Flyer",
       "finalImageUrl": "Final Flyer",
       "slackMessageTs": "Slack Message TS",
+      "lastActiveMessageTs": "Last Active Message TS",
       "createdAt": "Created At",
       "daysUntilDeadline": "Days Until Deadline",
       "isOverdue": "Is Overdue?",
@@ -89,5 +90,6 @@
   "slack": {
     "draftChannelId": "C000000000"
   },
-  "timezone": "Pacific/Honolulu"
+  "timezone": "Pacific/Honolulu",
+  "maxRevisions": 5
 }

@@ -173,6 +173,46 @@ export async function renderFlyer(
 }
 
 /**
+ * Revision path: feed the prior draft + reviewer notes into reviseFlyer.md.
+ * The prompt instructs Claude to treat it as a diff and only change what the
+ * notes call out. No retry — if it fails validation, processSubmission marks
+ * the record Error and the reviewer can request revision again.
+ */
+export async function generateFlyerContentWithRevision(
+  submission: Submission,
+  priorOutput: FlyerContent,
+  revisionNotes: string,
+  deps: Pick<GenerateDeps, "anthropic" | "orgConfig">,
+): Promise<FlyerContent> {
+  const { anthropic, orgConfig } = deps;
+  const systemPrompt = loadPrompt("reviseFlyer", orgConfig, {
+    priorOutput: JSON.stringify(priorOutput, null, 2),
+    revisionNotes: revisionNotes || "(no notes provided)",
+  });
+  const userPrompt = submissionToUserPrompt(submission, orgConfig.timezone);
+
+  logger.info({ recordId: submission.recordId }, "calling anthropic for revision");
+  const raw = await anthropic.generateJson({ systemPrompt, userPrompt });
+  const unfenced = stripCodeFences(raw);
+
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(unfenced);
+  } catch (err) {
+    logger.error({ raw, err }, "revision LLM output was not JSON");
+    throw new Error("revision LLM output was not valid JSON");
+  }
+
+  const schema = buildFlyerOutputSchema(orgConfig);
+  const validated = schema.parse(parsedJson);
+  return {
+    templateId: validated.templateId,
+    fields: validated.fields,
+    rationale: validated.rationale,
+  };
+}
+
+/**
  * Convenience wrapper used by scripts/test-pipeline.ts — single attempt, no
  * retry, no Airtable/Slack side effects.
  */

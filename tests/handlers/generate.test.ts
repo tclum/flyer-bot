@@ -43,6 +43,7 @@ const fakeOrgConfig: OrgConfig = {
   ],
   slack: { draftChannelId: "C123" },
   timezone: "Pacific/Honolulu",
+  maxRevisions: 5,
 };
 
 describe("buildFlyerOutputSchema", () => {

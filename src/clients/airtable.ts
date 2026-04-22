@@ -137,4 +137,71 @@ export class AirtableClient {
     const rec = await this.base(this.mapping.tableName).find(recordId);
     return asString(rec.get(this.mapping.fields.revisionNotes));
   }
+
+  async getGeneratedJson(recordId: string): Promise<string> {
+    const rec = await this.base(this.mapping.tableName).find(recordId);
+    return asString(rec.get(this.mapping.fields.generatedJson));
+  }
+
+  async getRevisionCount(recordId: string): Promise<number> {
+    const rec = await this.base(this.mapping.tableName).find(recordId);
+    return asNumber(rec.get(this.mapping.fields.revisionCount));
+  }
+
+  private tsFieldKey(
+    which: "slackMessageTs" | "lastActiveMessageTs",
+  ): string | undefined {
+    return this.mapping.fields[which];
+  }
+
+  async getSlackMessageTs(recordId: string): Promise<string | null> {
+    const key = this.tsFieldKey("slackMessageTs");
+    if (!key) return null;
+    const rec = await this.base(this.mapping.tableName).find(recordId);
+    const v = rec.get(key);
+    return typeof v === "string" && v ? v : null;
+  }
+
+  async setSlackMessageTs(recordId: string, ts: string): Promise<void> {
+    const key = this.tsFieldKey("slackMessageTs");
+    if (!key) throw new Error("slackMessageTs field not mapped in org config");
+    await this.base(this.mapping.tableName).update(recordId, { [key]: ts });
+  }
+
+  async getLastActiveMessageTs(recordId: string): Promise<string | null> {
+    const key = this.tsFieldKey("lastActiveMessageTs");
+    if (!key) return null;
+    const rec = await this.base(this.mapping.tableName).find(recordId);
+    const v = rec.get(key);
+    return typeof v === "string" && v ? v : null;
+  }
+
+  async setLastActiveMessageTs(recordId: string, ts: string): Promise<void> {
+    const key = this.tsFieldKey("lastActiveMessageTs");
+    if (!key) throw new Error("lastActiveMessageTs field not mapped in org config");
+    await this.base(this.mapping.tableName).update(recordId, { [key]: ts });
+  }
+
+  /**
+   * Copies the Draft Flyer attachment's URL into the Final Flyer field on
+   * approval. NOTE: the reference is the Bannerbear-hosted URL. Airtable
+   * will download and re-host it, but long-term persistence still depends
+   * on Airtable's attachment retention. If Bannerbear URL expiration becomes
+   * an issue, consider uploading to a persistent store (e.g. S3) on approve.
+   */
+  async copyDraftToFinal(recordId: string): Promise<void> {
+    const rec = await this.base(this.mapping.tableName).find(recordId);
+    const draft = rec.get(this.mapping.fields.draftImageUrl);
+    if (!Array.isArray(draft) || draft.length === 0) {
+      throw new Error("no draft image to copy to final");
+    }
+    const item = draft[0] as { url?: string };
+    if (!item?.url) {
+      throw new Error("draft attachment is missing url");
+    }
+    const payload = {
+      [this.mapping.fields.finalImageUrl]: [{ url: item.url }],
+    } as unknown as Partial<Airtable.FieldSet>;
+    await this.base(this.mapping.tableName).update(recordId, payload);
+  }
 }

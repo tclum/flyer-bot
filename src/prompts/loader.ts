@@ -41,8 +41,12 @@ function interpolate(body: string, tokens: Record<string, string>): string {
   });
 }
 
-export function loadPrompt(name: "generateFlyer" | "reviseFlyer", config: OrgConfig): string {
+export function loadPrompt(
+  name: "generateFlyer" | "reviseFlyer",
+  config: OrgConfig,
+  extraTokens: Record<string, string> = {},
+): string {
   const path = resolve(here, `${name}.md`);
   const body = readFileSync(path, "utf8");
-  return interpolate(body, tokensFor(config));
+  return interpolate(body, { ...tokensFor(config), ...extraTokens });
 }

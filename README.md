@@ -31,6 +31,23 @@ cp config/example.json config/<yourorg>.json
 
 All API keys and config paths are validated at startup via Zod. The process exits with a structured error if anything is missing or malformed.
 
+### Slack app setup
+
+The review flow needs a Slack app with:
+
+- **Request URL**: `https://<your-host>/slack/events` (configured on the "Interactivity & Shortcuts" page and on the Events API page if used). Signature verification happens via Bolt's `ExpressReceiver` using `SLACK_SIGNING_SECRET`.
+- **OAuth Bot Token scopes**: `chat:write`, `chat:write.public` (if posting to public channels the bot isn't invited to — preferable to invite instead), and `commands` is not required for v1.
+- **Bot user invited** to the channel whose ID is `slack.draftChannelId` in the org config. Without the invite, `postMessage` will return `not_in_channel`.
+- **Bot token and signing secret** in `.env` as `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET`.
+
+### Airtable automation trigger
+
+The Airtable base needs an automation that POSTs to `/webhooks/airtable` with the shared secret header `x-flyer-bot-secret`. The trigger condition must fire on both new submissions and revision re-runs:
+
+> **When record matches condition** — Status is any of `Submitted`, `In Revision`.
+
+The revise button flips the record's Status to `In Revision`, which is what re-triggers the webhook and causes `processSubmission` to pick the record up again with the new reviewer notes.
+
 ## Running
 
 ```sh
@@ -71,8 +88,8 @@ src/
   config.ts             # loads .env + ORG_CONFIG_PATH, Zod-validates
   clients/              # anthropic, bannerbear, airtable, slack
   webhooks/airtable.ts  # POST /webhooks/airtable
-  handlers/             # generate (full), revise + approve (stubs)
-  slack/                # draftMessage (Block Kit) + actions (button handlers)
+  handlers/             # generate, revise, approve, processSubmission
+  slack/                # draftMessage (Block Kit), postDraft, actions (button handlers)
   prompts/              # generateFlyer.md, reviseFlyer.md, loader.ts
   schemas/              # orgConfig + flyer (LLM output, runtime-built)
   templates/catalog.ts  # selectors over config.templates

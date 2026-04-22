@@ -50,6 +50,7 @@ const orgConfig: OrgConfig = {
   ],
   slack: { draftChannelId: "C123" },
   timezone: "Pacific/Honolulu",
+  maxRevisions: 5,
 };
 
 const goodSubmission: Submission = {
@@ -78,6 +79,8 @@ function makeDeps(overrides: {
   submission?: Submission;
   llmResponses?: string[];
   renderMock?: ReturnType<typeof vi.fn>;
+  generatedJson?: string;
+  revisionNotes?: string;
 }): {
   deps: ProcessDeps;
   airtable: {
@@ -87,9 +90,12 @@ function makeDeps(overrides: {
     attachImage: ReturnType<typeof vi.fn>;
     saveGeneratedJson: ReturnType<typeof vi.fn>;
     appendRevisionNotes: ReturnType<typeof vi.fn>;
+    getGeneratedJson: ReturnType<typeof vi.fn>;
+    getRevisionNotes: ReturnType<typeof vi.fn>;
   };
   anthropic: { generateJson: ReturnType<typeof vi.fn> };
   bannerbear: { render: ReturnType<typeof vi.fn> };
+  postDraft: ReturnType<typeof vi.fn>;
 } {
   const record = overrides.record ?? makeRecord("Submitted");
   const submission = overrides.submission ?? goodSubmission;
@@ -114,19 +120,23 @@ function makeDeps(overrides: {
     attachImage: vi.fn(async () => undefined),
     saveGeneratedJson: vi.fn(async () => undefined),
     appendRevisionNotes: vi.fn(async () => undefined),
+    getGeneratedJson: vi.fn(async () => overrides.generatedJson ?? ""),
+    getRevisionNotes: vi.fn(async () => overrides.revisionNotes ?? ""),
   };
 
   const anthropic = { generateJson };
   const bannerbear = { render };
+  const postDraft = vi.fn(async () => undefined);
 
   const deps: ProcessDeps = {
     airtable: airtable as unknown as AirtablePort,
     anthropic: anthropic as unknown as AnthropicPort,
     bannerbear: bannerbear as unknown as BannerbearPort,
     orgConfig,
+    postDraft,
   };
 
-  return { deps, airtable, anthropic, bannerbear };
+  return { deps, airtable, anthropic, bannerbear, postDraft };
 }
 
 describe("processSubmission", () => {
@@ -135,7 +145,7 @@ describe("processSubmission", () => {
   });
 
   it("happy path: runs the pipeline in the right order with the right args", async () => {
-    const { deps, airtable, anthropic, bannerbear } = makeDeps({});
+    const { deps, airtable, anthropic, bannerbear, postDraft } = makeDeps({});
 
     await processSubmission("recTEST", deps);
 
@@ -155,6 +165,17 @@ describe("processSubmission", () => {
     );
     expect(airtable.updateStatus).toHaveBeenNthCalledWith(2, "recTEST", "Draft Ready");
     expect(airtable.appendRevisionNotes).not.toHaveBeenCalled();
+    expect(postDraft).toHaveBeenCalledTimes(1);
+    expect(postDraft).toHaveBeenCalledWith({
+      recordId: "recTEST",
+      submission: goodSubmission,
+      output: {
+        templateId: "tpl_poster",
+        fields: { headline: "Pitch Night", body: "Ten teams pitch before local founders." },
+        rationale: "Default poster for a pitch night announcement.",
+      },
+      imageUrl: "https://bannerbear.example/final.png",
+    });
   });
 
   it("is a no-op when status is already Generating", async () => {
@@ -183,7 +204,7 @@ describe("processSubmission", () => {
     expect(airtable.updateStatus).not.toHaveBeenCalled();
   });
 
-  it("proceeds when status is In Revision", async () => {
+  it("proceeds when status is In Revision (falls back to fresh generate without prior state)", async () => {
     const { deps, airtable, anthropic } = makeDeps({
       record: makeRecord("In Revision"),
     });
@@ -192,6 +213,42 @@ describe("processSubmission", () => {
 
     expect(anthropic.generateJson).toHaveBeenCalledTimes(1);
     expect(airtable.updateStatus).toHaveBeenNthCalledWith(2, "recTEST", "Draft Ready");
+  });
+
+  it("In Revision with prior JSON + notes feeds the revise prompt", async () => {
+    const priorJson = JSON.stringify({
+      templateId: "tpl_poster",
+      fields: { headline: "Old Title", body: "Old body copy goes here." },
+      rationale: "Original choice.",
+    });
+    const { deps, airtable, anthropic, postDraft } = makeDeps({
+      record: makeRecord("In Revision"),
+      generatedJson: priorJson,
+      revisionNotes: "Make the headline shorter and punchier.",
+    });
+
+    await processSubmission("recTEST", deps);
+
+    expect(anthropic.generateJson).toHaveBeenCalledTimes(1);
+    const call = anthropic.generateJson.mock.calls[0]?.[0] as {
+      systemPrompt: string;
+      userPrompt: string;
+    };
+    expect(call.systemPrompt).toContain("revising an existing draft");
+    expect(call.systemPrompt).toContain("Old Title");
+    expect(call.systemPrompt).toContain("Make the headline shorter");
+    expect(airtable.updateStatus).toHaveBeenNthCalledWith(2, "recTEST", "Draft Ready");
+    expect(postDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("postDraft failure is logged but does not flip status to Error", async () => {
+    const { deps, airtable, postDraft } = makeDeps({});
+    postDraft.mockRejectedValueOnce(new Error("slack down"));
+
+    await processSubmission("recTEST", deps);
+
+    expect(airtable.updateStatus).toHaveBeenNthCalledWith(2, "recTEST", "Draft Ready");
+    expect(airtable.appendRevisionNotes).not.toHaveBeenCalled();
   });
 
   it("retries once when the first LLM response fails Zod validation", async () => {

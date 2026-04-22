@@ -3,9 +3,11 @@ import express from "express";
 import { AirtableClient } from "./clients/airtable.js";
 import { AnthropicClient } from "./clients/anthropic.js";
 import { BannerbearClient } from "./clients/bannerbear.js";
+import { SlackClient } from "./clients/slack.js";
 import { appConfig } from "./config.js";
 import { processSubmission } from "./handlers/processSubmission.js";
 import { registerSlackActions } from "./slack/actions.js";
+import { postDraftToSlack } from "./slack/postDraft.js";
 import { airtableWebhookRouter } from "./webhooks/airtable.js";
 import { logger } from "./util/logger.js";
 
@@ -22,11 +24,15 @@ async function main(): Promise<void> {
     receiver,
   });
 
-  registerSlackActions(app);
-
   const airtable = new AirtableClient(env.AIRTABLE_PAT, env.AIRTABLE_BASE_ID, org.airtable);
   const anthropic = new AnthropicClient(env.ANTHROPIC_API_KEY, env.ANTHROPIC_MODEL);
   const bannerbear = new BannerbearClient(env.BANNERBEAR_API_KEY);
+  const slack = new SlackClient(env.SLACK_BOT_TOKEN);
+
+  registerSlackActions(app, { airtable, orgConfig: org });
+
+  const postDraft = (params: Parameters<typeof postDraftToSlack>[0]) =>
+    postDraftToSlack(params, { airtable, slack, orgConfig: org });
 
   const server = receiver.app;
   server.use(express.json());
@@ -34,7 +40,13 @@ async function main(): Promise<void> {
     airtableWebhookRouter({
       secret: env.AIRTABLE_WEBHOOK_SECRET,
       onSubmission: (recordId) =>
-        processSubmission(recordId, { airtable, anthropic, bannerbear, orgConfig: org }),
+        processSubmission(recordId, {
+          airtable,
+          anthropic,
+          bannerbear,
+          orgConfig: org,
+          postDraft,
+        }),
     }),
   );
 
