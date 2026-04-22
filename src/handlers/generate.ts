@@ -1,3 +1,4 @@
+import { ZodError } from "zod";
 import type { AnthropicClient } from "../clients/anthropic.js";
 import type { BannerbearClient, Modification } from "../clients/bannerbear.js";
 import { loadPrompt } from "../prompts/loader.js";
@@ -14,27 +15,45 @@ export interface Submission {
   eventTime: string;
   location: string;
   description: string;
+  audience: string;
+  requesterEmail: string;
   templateHint?: string | undefined;
+  deadline?: string | undefined;
 }
 
 export interface GenerateDeps {
-  anthropic: AnthropicClient;
-  bannerbear: BannerbearClient;
+  anthropic: Pick<AnthropicClient, "generateJson">;
+  bannerbear: Pick<BannerbearClient, "render">;
   orgConfig: OrgConfig;
 }
 
-export interface GenerateResult {
+export interface FlyerContent {
   templateId: string;
   fields: Record<string, string>;
   rationale: string | undefined;
+}
+
+export interface GenerateResult extends FlyerContent {
   imageUrl: string;
 }
 
-function submissionToUserPrompt(s: Submission, timezone: string): string {
+function stripCodeFences(s: string): string {
+  const trimmed = s.trim();
+  const fence = /^```(?:json)?\s*\n([\s\S]*?)\n```$/;
+  const match = fence.exec(trimmed);
+  return match?.[1]?.trim() ?? trimmed;
+}
+
+function submissionToUserPrompt(
+  s: Submission,
+  timezone: string,
+  validationFeedback?: string,
+): string {
   const d = deriveDateParts(s.eventDate, timezone);
-  return [
+  const lines = [
     "Event details:",
     `- Title: ${s.eventTitle}`,
+    `- Audience: ${s.audience}`,
     `- Date (ISO): ${s.eventDate}`,
     `  - weekday: ${d.weekday}`,
     `  - weekday_short: ${d.weekdayShort}`,
@@ -46,17 +65,18 @@ function submissionToUserPrompt(s: Submission, timezone: string): string {
     `- Time: ${s.eventTime}`,
     `- Location: ${s.location}`,
     `- Description: ${s.description}`,
+    `- Requester: ${s.requesterEmail}`,
+    s.deadline ? `- Deadline: ${s.deadline}` : "",
     s.templateHint ? `- Template hint from submitter: ${s.templateHint}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-function stripCodeFences(s: string): string {
-  const trimmed = s.trim();
-  const fence = /^```(?:json)?\s*\n([\s\S]*?)\n```$/;
-  const match = fence.exec(trimmed);
-  return match?.[1]?.trim() ?? trimmed;
+  ].filter(Boolean);
+  if (validationFeedback) {
+    lines.push(
+      "",
+      "IMPORTANT: your previous response failed validation. Fix the following issues and try again:",
+      validationFeedback,
+    );
+  }
+  return lines.join("\n");
 }
 
 function toModifications(
@@ -74,19 +94,34 @@ function toModifications(
   });
 }
 
-export async function generate(
+function formatZodForPrompt(err: ZodError): string {
+  return err.issues
+    .map((i) => `- ${i.path.join(".") || "(root)"}: ${i.message}`)
+    .join("\n");
+}
+
+/**
+ * Calls Claude, parses JSON, and Zod-validates against the per-org schema.
+ * Does NOT render Bannerbear — that's `renderFlyer`. Split so callers can
+ * retry the LLM call with validation feedback without re-rendering on success.
+ */
+export async function generateFlyerContent(
   submission: Submission,
-  deps: GenerateDeps,
-): Promise<GenerateResult> {
-  const { anthropic, bannerbear, orgConfig } = deps;
-
+  deps: Pick<GenerateDeps, "anthropic" | "orgConfig">,
+  opts: { validationFeedback?: string } = {},
+): Promise<FlyerContent> {
+  const { anthropic, orgConfig } = deps;
   const systemPrompt = loadPrompt("generateFlyer", orgConfig);
-  const userPrompt = submissionToUserPrompt(submission, orgConfig.timezone);
+  const userPrompt = submissionToUserPrompt(
+    submission,
+    orgConfig.timezone,
+    opts.validationFeedback,
+  );
 
-  logger.info({ recordId: submission.recordId }, "calling anthropic");
+  logger.info({ recordId: submission.recordId, retry: Boolean(opts.validationFeedback) }, "calling anthropic");
   const raw = await anthropic.generateJson({ systemPrompt, userPrompt });
-
   const unfenced = stripCodeFences(raw);
+
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(unfenced);
@@ -97,23 +132,55 @@ export async function generate(
 
   const schema = buildFlyerOutputSchema(orgConfig);
   const validated = schema.parse(parsedJson);
-
-  const template = requireTemplate(orgConfig, validated.templateId);
-  const modifications = toModifications(template, validated.fields);
-
-  logger.info(
-    { templateId: validated.templateId, recordId: submission.recordId },
-    "rendering bannerbear image",
-  );
-  const image = await bannerbear.render(template.id, modifications);
-
-  // TODO(airtable): write draft image URL back to the submission record
-  // TODO(slack): post the draft to the review channel via slack/draftMessage.ts
-
   return {
     templateId: validated.templateId,
     fields: validated.fields,
     rationale: validated.rationale,
-    imageUrl: image.image_url,
   };
+}
+
+/**
+ * Calls Claude with one Zod-validation retry. On the second attempt the user
+ * prompt includes the first attempt's validation errors.
+ */
+export async function generateFlyerContentWithRetry(
+  submission: Submission,
+  deps: Pick<GenerateDeps, "anthropic" | "orgConfig">,
+): Promise<FlyerContent> {
+  try {
+    return await generateFlyerContent(submission, deps);
+  } catch (err) {
+    if (!(err instanceof ZodError)) throw err;
+    logger.warn(
+      { recordId: submission.recordId, issues: err.issues },
+      "LLM output failed validation; retrying once",
+    );
+    return generateFlyerContent(submission, deps, {
+      validationFeedback: formatZodForPrompt(err),
+    });
+  }
+}
+
+export async function renderFlyer(
+  content: FlyerContent,
+  deps: Pick<GenerateDeps, "bannerbear" | "orgConfig">,
+): Promise<string> {
+  const template = requireTemplate(deps.orgConfig, content.templateId);
+  const modifications = toModifications(template, content.fields);
+  logger.info({ templateId: content.templateId }, "rendering bannerbear image");
+  const image = await deps.bannerbear.render(template.id, modifications);
+  return image.image_url;
+}
+
+/**
+ * Convenience wrapper used by scripts/test-pipeline.ts — single attempt, no
+ * retry, no Airtable/Slack side effects.
+ */
+export async function generate(
+  submission: Submission,
+  deps: GenerateDeps,
+): Promise<GenerateResult> {
+  const content = await generateFlyerContent(submission, deps);
+  const imageUrl = await renderFlyer(content, deps);
+  return { ...content, imageUrl };
 }

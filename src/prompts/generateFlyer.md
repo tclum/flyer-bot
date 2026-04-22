@@ -14,6 +14,9 @@ You will be given details of an upcoming event. Pick the best template from the 
 Template catalog (pick one by `templateId`):
 {{templateCatalog}}
 
+Audience:
+- The user message includes an `Audience` field describing who the event is for (e.g., "undergrad founders", "MBA alumni", "high-school visitors"). Let this shape tone, vocabulary, and which approved tagline fits best.
+
 Date handling:
 - The user message will include pre-computed weekday / month / day / year values derived from the event's ISO date in the org's timezone.
 - Use those provided values verbatim when constructing date strings. Do not compute, infer, or reformat dates yourself.

@@ -11,6 +11,7 @@ const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1),
   AIRTABLE_PAT: z.string().min(1),
   AIRTABLE_BASE_ID: z.string().min(1),
+  AIRTABLE_WEBHOOK_SECRET: z.string().min(32),
   BANNERBEAR_API_KEY: z.string().min(1),
   BANNERBEAR_PROJECT_ID: z.string().min(1),
   SLACK_BOT_TOKEN: z.string().min(1),

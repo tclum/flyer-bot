@@ -22,7 +22,8 @@ const fakeSubmission: Submission = {
   location: "Shidler BusAd C-201",
   description:
     "Ten student teams pitch to a panel of local founders and investors. Prizes, food, and networking. Open to all UH Mānoa students.",
-  templateHint: undefined,
+  audience: "UH Mānoa undergrads interested in entrepreneurship",
+  requesterEmail: "pace-events@hawaii.edu",
 };
 
 async function main(): Promise<void> {
