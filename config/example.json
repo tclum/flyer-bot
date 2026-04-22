@@ -1,0 +1,97 @@
+{
+  "orgName": "Example Org",
+  "orgDescription": "One or two sentences describing the org: who they are, who they serve, and what kinds of events they run. Used verbatim in the LLM system prompt.",
+  "brandVoice": {
+    "tone": "friendly, energetic, student-focused",
+    "do": [
+      "use active voice",
+      "mention the org by name at least once",
+      "keep headlines under 8 words"
+    ],
+    "dont": [
+      "don't use emoji in headlines",
+      "don't invent taglines — use only the approved list"
+    ],
+    "taglines": ["Build. Pitch. Launch.", "Your idea starts here."]
+  },
+  "airtable": {
+    "tableName": "Flyer Requests",
+    "fields": {
+      "eventTitle": "Event Name",
+      "eventDate": "Date",
+      "eventTime": "Time",
+      "location": "Location",
+      "description": "Description",
+      "audience": "Audience",
+      "templateHint": "Requested Template",
+      "requesterEmail": "Requester Email",
+      "deadline": "Deadline",
+      "supportingAttachments": "Supporting Attachments",
+      "status": "Status",
+      "revisionNotes": "Revision Notes",
+      "generatedJson": "Generated JSON",
+      "revisionCount": "Revision Count",
+      "draftImageUrl": "Draft Flyer",
+      "finalImageUrl": "Final Flyer",
+      "slackMessageTs": "Slack Message TS",
+      "createdAt": "Created At",
+      "daysUntilDeadline": "Days Until Deadline",
+      "isOverdue": "Is Overdue?",
+      "shortDescriptionSummary": "Short Description Summary",
+      "suggestedFlyerImprovements": "Suggested Flyer Improvements"
+    }
+  },
+  "templates": [
+    {
+      "id": "REPLACE_WITH_BANNERBEAR_TEMPLATE_UID",
+      "name": "Event Poster (Portrait)",
+      "description": "Vertical poster for single-event promotion. Pick this for standalone events with a clear date/time/location.",
+      "fields": [
+        {
+          "name": "headline",
+          "type": "text",
+          "description": "The event title",
+          "maxChars": 48
+        },
+        {
+          "name": "subheadline",
+          "type": "text",
+          "description": "One-line hook or tagline",
+          "maxChars": 60
+        },
+        {
+          "name": "date_line",
+          "type": "text",
+          "description": "Formatted date + time (e.g., 'Fri, May 3 · 6pm')",
+          "maxChars": 32
+        },
+        {
+          "name": "location_line",
+          "type": "text",
+          "description": "Venue / room",
+          "maxChars": 48
+        },
+        {
+          "name": "body_copy",
+          "type": "text",
+          "description": "Two-sentence description of the event",
+          "maxChars": 180
+        },
+        {
+          "name": "accent_color",
+          "type": "color",
+          "description": "Primary accent color as CSS hex"
+        },
+        {
+          "name": "background_image",
+          "type": "image",
+          "description": "Background image URL (16:9 or better)"
+        }
+      ]
+    }
+  ],
+  "slack": {
+    "draftChannelId": "C000000000"
+  },
+  "timezone": "Pacific/Honolulu"
+}

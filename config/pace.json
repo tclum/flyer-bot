@@ -1,0 +1,93 @@
+{
+  "orgName": "PACE",
+  "orgDescription": "Pacific Asian Center for Entrepreneurship (PACE) at UH Mānoa's Shidler College of Business. PACE supports student entrepreneurship through pitch competitions, workshops, and founder events across the islands.",
+  "brandVoice": {
+    "tone": "energetic, student-focused, Hawaii-local without being corny",
+    "do": [
+      "use active voice",
+      "mention PACE or Shidler when it adds credibility",
+      "keep headlines under 8 words",
+      "lean into student-founder language"
+    ],
+    "dont": [
+      "don't use emoji in headlines",
+      "don't sound corporate or stiff",
+      "don't invent taglines — use only the approved list"
+    ],
+    "taglines": [
+      "Build. Pitch. Launch.",
+      "Student entrepreneurship starts here.",
+      "From idea to island impact."
+    ]
+  },
+  "airtable": {
+    "tableName": "Flyer Requests",
+    "fields": {
+      "eventTitle": "Event Name",
+      "eventDate": "Date",
+      "eventTime": "Time",
+      "location": "Location",
+      "description": "Description",
+      "audience": "Audience",
+      "templateHint": "Requested Template",
+      "requesterEmail": "Requester Email",
+      "deadline": "Deadline",
+      "supportingAttachments": "Supporting Attachments",
+      "status": "Status",
+      "revisionNotes": "Revision Notes",
+      "generatedJson": "Generated JSON",
+      "revisionCount": "Revision Count",
+      "draftImageUrl": "Draft Flyer",
+      "finalImageUrl": "Final Flyer",
+      "slackMessageTs": "Slack Message TS",
+      "createdAt": "Created At",
+      "daysUntilDeadline": "Days Until Deadline",
+      "isOverdue": "Is Overdue?",
+      "shortDescriptionSummary": "Short Description Summary",
+      "suggestedFlyerImprovements": "Suggested Flyer Improvements"
+    }
+  },
+  "templates": [
+    {
+      "id": "wvgMNmDopqjNbyARK0",
+      "name": "PACE Event Poster",
+      "description": "Default PACE event poster. Use for workshops, panels, and pitch-night announcements.",
+      "fields": [
+        {
+          "name": "headline",
+          "type": "text",
+          "description": "The event title",
+          "maxChars": 48
+        },
+        {
+          "name": "subheadline",
+          "type": "text",
+          "description": "One-line hook, tagline, or speaker name",
+          "maxChars": 60
+        },
+        {
+          "name": "date_line",
+          "type": "text",
+          "description": "Formatted date + time (e.g., 'Fri, May 3 · 6pm')",
+          "maxChars": 32
+        },
+        {
+          "name": "location_line",
+          "type": "text",
+          "description": "Venue / room (e.g., 'Shidler BusAd C-201')",
+          "maxChars": 48
+        },
+        {
+          "name": "body_copy",
+          "type": "text",
+          "description": "Two-sentence description of the event",
+          "maxChars": 180
+        }
+      ]
+    }
+  ],
+  "slack": {
+    "draftChannelId": "C000000000"
+  },
+  "timezone": "Pacific/Honolulu"
+}
