@@ -102,3 +102,21 @@ flyer-bot/
 └── tests/
 └── handlers/
 └── generate.test.ts
+
+## Cross-Project Operating Rules
+
+These apply to every project under `~/Desktop/Developer`. Canonical source:
+`~/Desktop/Developer/CLAUDE.md`.
+
+- **Full test suite is the commit gate.** The full Vitest suite must be green
+  before every commit — not optional. Targeted checks (typecheck, focused tests)
+  are *in addition to*, never *instead of*, the full suite.
+- **Explicit file lists for git commits.** Stage named files; `git add -A` is the
+  exception, not the default — it sweeps untracked or in-flight work (e.g. local
+  config edits) into the wrong commit.
+- **Platform fixes ship separately from feature work.** Bug and platform fixes go
+  in their own commits. Bundling is allowed only under genuine production
+  pressure, and must be named explicitly in the commit message.
+- **Investigation before implementation.** Surface design questions and
+  ambiguities before writing code. Never silently pick a default at a fork —
+  document the decision or ask.
