@@ -1,0 +1,9 @@
+{
+  "name": "flyer-bot",
+  "description": "Marketing flyer pipeline: Airtable -> Claude copy -> Bannerbear media -> Slack approval.",
+  "category": "check",
+  "url": null,
+  "start": "pnpm run dev",
+  "stack": "Node 20, TypeScript, Express, Slack Bolt, Anthropic, Airtable, Bannerbear, Zod, Vitest, pnpm",
+  "pitch": "Marketing pipeline — templates + AI media gen -> Slack approval (Slack trial expired; verify first)"
+}
